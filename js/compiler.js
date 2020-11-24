@@ -41,8 +41,14 @@ class Compiler {
     }
     //统一处理指令的方法
     update (node, key, attrName) {
-        let updateFn = this[`${attrName}Updater`];
-        updateFn && updateFn.call(this, node, key, this.vm[key]);
+        if (attrName.startsWith('on:')) {
+            let eventType = attrName.substr(3);
+            let updateFn =  this.onUpdater;
+            updateFn && updateFn.call(this, node, eventType, key);
+        } else {
+            let updateFn = this[`${attrName}Updater`];
+            updateFn && updateFn.call(this, node, key, this.vm[key]);
+        }
     }
     //处理v-text指令
     textUpdater (node, key, value) {
@@ -51,6 +57,14 @@ class Compiler {
         //创建watcher实例，当数据改变时更新视图
         new Watcher(this.vm, key, (newVal) => {
             node.textContent = newVal;
+        })
+    }
+    htmlUpdater (node, key, value) {
+        node.innerHTML = value;
+
+        //创建watcher实例，当数据改变时更新视图
+        new Watcher(this.vm, key, (newVal) => {
+            node.innerHTML = newVal;
         })
     }
     //处理v-model指令
@@ -64,6 +78,15 @@ class Compiler {
         //创建watcher实例，当数据改变时更新视图
         new Watcher(this.vm, key, (newVal) => {
             node.value = newVal;
+        })
+    }
+    onUpdater (node, eventType, key) {
+        node.addEventListener(eventType, () => {
+            if (typeof key === 'string') {
+                new Function(key)();
+            } else if (typeof key === 'function') {
+                key();
+            }
         })
     }
     //处理文本节点，处理差值表达式
